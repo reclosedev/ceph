@@ -14,4 +14,6 @@ struct obj_watch_t {
   uint32_t timeout_seconds;
 }; 
 
+#define	LIBRADOS_ALL_NSPACES "\001"
+
 #endif

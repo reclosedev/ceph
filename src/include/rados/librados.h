@@ -160,9 +160,9 @@ typedef void *rados_ioctx_t;
  * @typedef rados_list_ctx_t
  *
  * An iterator for listing the objects in a pool.
- * Used with rados_objects_list_open(),
- * rados_objects_list_next(), and
- * rados_objects_list_close().
+ * Used with rados_nobjects_list_open(),
+ * rados_nobjects_list_next(), and
+ * rados_nobjects_list_close().
  */
 typedef void *rados_list_ctx_t;
 
@@ -813,6 +813,9 @@ void rados_ioctx_set_namespace(rados_ioctx_t io, const char *nspace);
  * @param ctx the handle to store list context in
  * @returns 0 on success, negative error code on failure
  */
+int rados_nobjects_list_open(rados_ioctx_t io, rados_list_ctx_t *ctx);
+
+// Deprecated
 int rados_objects_list_open(rados_ioctx_t io, rados_list_ctx_t *ctx);
 
 /**
@@ -821,6 +824,9 @@ int rados_objects_list_open(rados_ioctx_t io, rados_list_ctx_t *ctx);
  * @param ctx iterator marking where you are in the listing
  * @returns current hash position, rounded to the current pg
  */
+uint32_t rados_nobjects_list_get_pg_hash_position(rados_list_ctx_t ctx);
+
+// Deprecated
 uint32_t rados_objects_list_get_pg_hash_position(rados_list_ctx_t ctx);
 
 /**
@@ -830,6 +836,9 @@ uint32_t rados_objects_list_get_pg_hash_position(rados_list_ctx_t ctx);
  * @param pos hash position to move to
  * @returns actual (rounded) position we moved to
  */
+uint32_t rados_nobjects_list_seek(rados_list_ctx_t ctx, uint32_t pos);
+
+// Deprecated
 uint32_t rados_objects_list_seek(rados_list_ctx_t ctx, uint32_t pos);
 
 /**
@@ -840,9 +849,14 @@ uint32_t rados_objects_list_seek(rados_list_ctx_t ctx, uint32_t pos);
  * @param ctx iterator marking where you are in the listing
  * @param entry where to store the name of the entry
  * @param key where to store the object locator (set to NULL to ignore)
+ * @param nspace where to store the object namespace (set to NULL to ignore)
  * @returns 0 on success, negative error code on failure
  * @returns -ENOENT when there are no more objects to list
  */
+int rados_nobjects_list_next(rados_list_ctx_t ctx, const char **entry,
+	const char **key, const char **nspace);
+
+// DEPRECATED; use rados_nobjects_list_next() instead
 int rados_objects_list_next(rados_list_ctx_t ctx, const char **entry, const char **key);
 
 /**
@@ -853,6 +867,9 @@ int rados_objects_list_next(rados_list_ctx_t ctx, const char **entry, const char
  *
  * @param ctx the handle to close
  */
+void rados_nobjects_list_close(rados_list_ctx_t ctx);
+
+// DEPRECATED; use rados_nobjects_list_close() instead
 void rados_objects_list_close(rados_list_ctx_t ctx);
 
 /** @} Listing Objects */
