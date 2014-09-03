@@ -3169,10 +3169,12 @@ void Client::trim_caps(MetaSession *s, int max)
       ldout(cct, 20) << " trying to trim dentries for " << *in << dendl;
       bool all = true;
       set<Dentry*>::iterator q = in->dn_set.begin();
+      in->get();
       while (q != in->dn_set.end()) {
 	Dentry *dn = *q++;
 	if (dn->lru_is_expireable()) {
 	  trim_dentry(dn);
+
         } else {
           ldout(cct, 20) << "  not expirable: " << dn->name << dendl;
 	  all = false;
@@ -3182,6 +3184,8 @@ void Client::trim_caps(MetaSession *s, int max)
         ldout(cct, 20) << __func__ << " counting as trimmed: " << *in << dendl;
 	trimmed++;
       }
+
+      put_inode(in);
     }
 
     ++p;
@@ -3191,6 +3195,7 @@ void Client::trim_caps(MetaSession *s, int max)
     }
   }
   s->s_cap_iterator = NULL;
+
 
   // notify kernel to invalidate top level directory entries. As a side effect,
   // unused inodes underneath these entries get pruned.
