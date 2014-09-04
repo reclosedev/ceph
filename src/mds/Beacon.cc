@@ -15,11 +15,13 @@
 
 #include "common/dout.h"
 #include "common/HeartbeatMap.h"
+#include "include/stringify.h"
 
 #include "messages/MMDSBeacon.h"
 #include "mon/MonClient.h"
 #include "mds/MDS.h"
 #include "mds/MDLog.h"
+#include "mds/Locker.h"
 
 #include "Beacon.h"
 
@@ -258,6 +260,48 @@ void Beacon::notify_health(MDS const *mds)
     m.metadata["num_segments"] = mds->mdlog->get_num_segments();
     m.metadata["max_segments"] = g_conf->mds_log_max_segments;
     health.metrics.push_back(m);
+  }
+
+  std::list<const Capability*> late_caps;
+  mds->locker->get_late_cap_releases(&late_caps);
+  std::set<client_t> late_clients;
+  for (std::list<const Capability*>::iterator i =late_caps.begin(); i != late_caps.end(); ++i) {
+    const Capability *cap = *i;
+    late_clients.insert(cap->get_client());
+  }
+
+  for (std::set<client_t>::iterator i = late_clients.begin(); i != late_clients.end(); ++i) {
+    std::ostringstream oss;
+    oss << "client." << *i << " failing to respond to capability release";
+    MDSHealthMetric m(MDS_HEALTH_CLIENT_LATE_RELEASE, HEALTH_WARN, oss.str());
+    m.metadata["client_id"] = stringify(i->v);
+    health.metrics.push_back(m);
+  }
+
+  // Detect clients failing to generate cap releases from SESSION_RECALL messages
+  // May be due to buggy client or resource-hogging application.
+  set<Session*> sessions;
+  mds->sessionmap.get_client_session_set(sessions);
+  utime_t cutoff = ceph_clock_now(g_ceph_context);
+  cutoff -= g_conf->mds_recall_state_timeout;
+
+  for (set<Session*>::iterator i = sessions.begin(); i != sessions.end(); ++i) {
+    Session *session = *i;
+    if (!session->recalled_at.is_zero()) {
+      dout(20) << "Session servicing RECALL " << session->info.inst
+        << ": " << session->recalled_at << " " << session->recall_release_count
+        << "/" << session->recall_count << dendl;
+      if (session->recalled_at < cutoff) {
+        dout(20) << "  exceeded timeout " << session->recalled_at << " vs. " << cutoff << dendl;
+        std::ostringstream oss;
+        oss << "Client " << session->info.inst.name.num() << " failing to respond to cache pressure";
+        MDSHealthMetric m(MDS_HEALTH_CLIENT_RECALL, HEALTH_WARN, oss.str());
+        m.metadata["client_id"] = session->info.inst.name.num();
+        health.metrics.push_back(m);
+      } else {
+        dout(20) << "  within timeout " << session->recalled_at << " vs. " << cutoff << dendl;
+      }
+    }
   }
 }
 
