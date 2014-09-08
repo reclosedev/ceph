@@ -100,6 +100,8 @@ public:
 
   interval_set<inodeno_t> pending_prealloc_inos; // journaling prealloc, will be added to prealloc_inos
 
+  std::map<std::string, std::string> client_meta;
+
   void notify_cap_release();
   void notify_recall_sent(int const new_limit);
 
