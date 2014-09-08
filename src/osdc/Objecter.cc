@@ -1296,6 +1296,9 @@ int Objecter::op_cancel(tid_t tid, int r)
 
   ldout(cct, 10) << __func__ << " tid " << tid << dendl;
   Op *op = p->second;
+
+  op->con->revoke_rx_buffer(op->tid);
+
   if (op->onack) {
     op->onack->complete(r);
     op->onack = NULL;
