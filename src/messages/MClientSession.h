@@ -21,6 +21,8 @@ class MClientSession : public Message {
 public:
   ceph_mds_session_head head;
 
+  std::map<std::string, std::string> client_meta;
+
   int get_op() const { return head.op; }
   version_t get_seq() const { return head.seq; }
   utime_t get_stamp() const { return utime_t(head.stamp); }
@@ -58,9 +60,15 @@ public:
   void decode_payload() { 
     bufferlist::iterator p = payload.begin();
     ::decode(head, p);
+    if (!p.end()) {
+      ::decode(client_meta, p);
+    }
   }
   void encode_payload(uint64_t features) { 
     ::encode(head, payload);
+    if (features & CEPH_FEATURE_MDS_CLIENT_METADATA) {
+      ::encode(client_meta, payload);
+    }
   }
 };
 
