@@ -284,7 +284,7 @@ void Beacon::notify_health(MDS const *mds)
       health.metrics.push_back(m);
     }
 
-    if (late_cap_metrics.size() <= g_conf->mds_health_summarize_threshold) {
+    if (late_cap_metrics.size() <= (size_t)g_conf->mds_health_summarize_threshold) {
       health.metrics.splice(health.metrics.end(), late_cap_metrics);
     } else {
       std::ostringstream oss;
@@ -325,7 +325,7 @@ void Beacon::notify_health(MDS const *mds)
       }
     }
 
-    if (late_recall_metrics.size() <= g_conf->mds_health_summarize_threshold) {
+    if (late_recall_metrics.size() <= (size_t)g_conf->mds_health_summarize_threshold) {
       health.metrics.splice(health.metrics.end(), late_recall_metrics);
     } else {
       std::ostringstream oss;
