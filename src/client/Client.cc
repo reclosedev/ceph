@@ -754,7 +754,7 @@ Inode * Client::add_update_inode(InodeStat *st, utime_t from,
  * insert_dentry_inode - insert + link a single dentry + inode into the metadata cache.
  */
 Dentry *Client::insert_dentry_inode(Dir *dir, const string& dname, LeaseStat *dlease, 
-				    Inode *in, utime_t from, MetaSession *session, bool set_offset,
+				    Inode *in, utime_t from, MetaSession *session,
 				    Dentry *old_dentry)
 {
   Dentry *dn = NULL;
@@ -781,14 +781,13 @@ Dentry *Client::insert_dentry_inode(Dir *dir, const string& dname, LeaseStat *dl
   
   if (!dn || dn->inode == 0) {
     in->get();
-    if (old_dentry)
+    if (old_dentry) {
+      old_dentry->dir->parent_inode->flags &= ~I_COMPLETE;
       unlink(old_dentry, dir == old_dentry->dir, false);  // drop dentry, keep dir open if its the same dir
+    }
+    dir->parent_inode->flags &= ~I_COMPLETE;
     dn = link(dir, dname, in, dn);
     put_inode(in);
-    if (set_offset) {
-      ldout(cct, 15) << " setting dn offset to " << dir->max_offset << dendl;
-      dn->offset = dir->max_offset++;
-    }
   }
 
   update_dentry_lease(dn, dlease, from, session);
@@ -1074,7 +1073,7 @@ Inode* Client::insert_trace(MetaRequest *request, MetaSession *session)
 
     if (in) {
       Dir *dir = diri->open_dir();
-      insert_dentry_inode(dir, dname, &dlease, in, request->sent_stamp, session, true,
+      insert_dentry_inode(dir, dname, &dlease, in, request->sent_stamp, session,
                           ((request->head.op == CEPH_MDS_OP_RENAME) ?
                                         request->old_dentry() : NULL));
     } else {
@@ -1100,7 +1099,7 @@ Inode* Client::insert_trace(MetaRequest *request, MetaSession *session)
 
     if (in) {
       Dir *dir = diri->open_dir();
-      insert_dentry_inode(dir, dname, &dlease, in, request->sent_stamp, session, true);
+      insert_dentry_inode(dir, dname, &dlease, in, request->sent_stamp, session);
     } else {
       if (diri->dir && diri->dir->dentries.count(dname)) {
 	Dentry *dn = diri->dir->dentries[dname];
@@ -5526,8 +5525,6 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p)
 	diri->shared_gen == dirp->start_shared_gen) {
       ldout(cct, 10) << " marking I_COMPLETE on " << *diri << dendl;
       diri->flags |= I_COMPLETE;
-      if (diri->dir)
-	diri->dir->max_offset = dirp->offset;
     }
 
     dirp->set_end();
